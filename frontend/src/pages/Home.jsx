@@ -1,4 +1,3 @@
-// Home.jsx
 import React from "react";
 import {
   BarChart3,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 
 export default function Home() {
+    
   const stats = [
     { label: "Customers synced", value: "120k+" },
     { label: "Orders processed", value: "3.2M" },
