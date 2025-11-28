@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X, Database } from "lucide-react";
 
 export default function Header() {
@@ -44,12 +45,18 @@ export default function Header() {
 
         {/* Actions */}
         <div className="hidden items-center gap-3 md:flex">
-          <button className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white">
+          <Link
+            to="/sign-in"
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white"
+          >
             Sign in
-          </button>
-          <button className="rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/40 transition hover:bg-indigo-400">
+          </Link>
+          <Link
+            to="/sign-up"
+            className="rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/40 transition hover:bg-indigo-400"
+          >
             Get started
-          </button>
+          </Link>
         </div>
 
         {/* Mobile menu button */}
@@ -77,12 +84,20 @@ export default function Header() {
             ))}
 
             <div className="mt-3 flex gap-2">
-              <button className="flex-1 rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-200">
+              <Link
+                to="/sign-in"
+                className="flex-1 rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-200 text-center"
+                onClick={() => setMobileOpen(false)}
+              >
                 Sign in
-              </button>
-              <button className="flex-1 rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold text-white">
+              </Link>
+              <Link
+                to="/sign-up"
+                className="flex-1 rounded-full bg-indigo-500 px-4 py-2 text-xs font-semibold text-white text-center"
+                onClick={() => setMobileOpen(false)}
+              >
                 Get started
-              </button>
+              </Link>
             </div>
           </nav>
         </div>
