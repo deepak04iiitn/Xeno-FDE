@@ -4,8 +4,9 @@ import { authenticateToken } from '../utils/auth.js';
 
 const router = express.Router();
 
+router.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook); // No auth for webhooks (uses HMAC)
+
 router.post('/:tenantId/sync', authenticateToken, triggerSync);
-router.post('/webhook', handleWebhook); // No auth for webhooks (uses HMAC)
 
 export default router;
 

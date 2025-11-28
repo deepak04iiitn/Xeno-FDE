@@ -1,6 +1,7 @@
 import { getPool } from '../utils/database.js';
 import { ShopifyService } from '../utils/shopify.js';
 import { syncTenantData } from '../services/ingestionService.js';
+import { registerWebhooks } from '../services/webhookService.js';
 
 export async function createTenant(req, res) {
   try {
@@ -13,7 +14,7 @@ export async function createTenant(req, res) {
 
     const db = getPool();
 
-    // Verify Shopify connection
+    // Verifying Shopify connection
     const shopify = new ShopifyService(shopDomain, accessToken);
 
     let shopInfo;
@@ -23,7 +24,7 @@ export async function createTenant(req, res) {
       return res.status(400).json({ error: 'Invalid Shopify credentials or shop domain' });
     }
 
-    // Check if tenant already exists
+    // Checking if tenant already exists
     const [existingTenants] = await db.execute('SELECT id FROM tenants WHERE shop_domain = ?', [
       shopDomain,
     ]);
@@ -46,6 +47,15 @@ export async function createTenant(req, res) {
     } catch (syncError) {
       console.error('Initial sync error:', syncError);
       // Not failing tenant creation if sync fails
+    }
+
+    // Registering webhooks for real-time updates
+    try {
+      const webhookResult = await registerWebhooks(result.insertId, shopDomain, accessToken);
+      console.log(`✅ Registered ${webhookResult.registered} webhooks for tenant ${result.insertId}`);
+    } catch (webhookError) {
+      console.error('Webhook registration error:', webhookError);
+      // Not failing tenant creation if webhook registration fails
     }
 
     res.status(201).json({

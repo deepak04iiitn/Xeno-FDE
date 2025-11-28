@@ -1,6 +1,6 @@
 import { getPool } from '../utils/database.js';
-import { syncTenantData } from '../services/ingestionService.js';
-import { processCustomEvent } from '../services/ingestionService.js';
+import { syncTenantData, processCustomEvent, processCustomer, processOrder, processProduct } from '../services/ingestionService.js';
+import crypto from 'crypto';
 
 export async function triggerSync(req, res) {
   try {
@@ -8,19 +8,19 @@ export async function triggerSync(req, res) {
     const tenantId = req.params.tenantId;
     const db = getPool();
 
-    // Verify tenant belongs to user
+    // Verifying that tenant belongs to user
     const [tenants] = await db.execute('SELECT * FROM tenants WHERE id = ? AND user_id = ?', [
       tenantId,
       userId,
     ]);
 
-    if (tenants.length === 0) {
+    if(tenants.length === 0) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
 
     const tenant = tenants[0];
 
-    // Trigger async sync
+    // Triggerring async sync
     syncTenantData(tenant.id, tenant.shop_domain, tenant.access_token)
       .then(async () => {
         await db.execute('UPDATE tenants SET last_sync_at = NOW() WHERE id = ?', [tenant.id]);
@@ -30,6 +30,7 @@ export async function triggerSync(req, res) {
       });
 
     res.json({ message: 'Data sync initiated. It will run in the background.' });
+
   } catch (error) {
     console.error('Trigger sync error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -42,49 +43,93 @@ export async function handleWebhook(req, res) {
     const hmac = req.headers['x-shopify-hmac-sha256'];
     const topic = req.headers['x-shopify-topic'];
 
-    if (!shopDomain || !topic) {
+    if(!shopDomain || !topic) {
       return res.status(400).json({ error: 'Missing required headers' });
     }
 
     const db = getPool();
 
-    // Find tenant by shop domain
+    // Finding tenant by shop domain
     const [tenants] = await db.execute('SELECT * FROM tenants WHERE shop_domain = ?', [shopDomain]);
-    if (tenants.length === 0) {
+
+    if(tenants.length === 0) {
+      console.warn(`Webhook received for unknown shop: ${shopDomain}`);
       return res.status(404).json({ error: 'Tenant not found' });
     }
 
     const tenant = tenants[0];
 
-    // Handle different webhook topics
-    switch (topic) {
+    // Parsing the body - handling both raw buffer and parsed JSON
+    let webhookData;
+
+    if(Buffer.isBuffer(req.body)) {
+      webhookData = JSON.parse(req.body.toString());
+    } else {
+      webhookData = req.body;
+    }
+
+    // Verifying webhook HMAC if webhook secret is configured or not
+    if(process.env.SHOPIFY_WEBHOOK_SECRET && hmac) {
+      const bodyString = Buffer.isBuffer(req.body) 
+        ? req.body.toString() 
+        : JSON.stringify(req.body);
+      
+      const calculatedHmac = crypto
+        .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
+        .update(bodyString)
+        .digest('base64');
+
+      if(calculatedHmac !== hmac) {
+        console.error('Webhook HMAC verification failed');
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    }
+
+    console.log(`📥 Webhook received: ${topic} from ${shopDomain}`);
+
+    // Handling different webhook topics
+    switch(topic) {
       case 'orders/create':
       case 'orders/update':
-        // Process order webhook
-        await processOrderWebhook(tenant.id, req.body, db);
+        await processOrderWebhook(tenant.id, webhookData, db);
+        break;
+      case 'orders/paid':
+      case 'orders/cancelled':
+      case 'orders/fulfilled':
+        await processOrderWebhook(tenant.id, webhookData, db);
         break;
       case 'customers/create':
       case 'customers/update':
-        // Process customer webhook
-        await processCustomerWebhook(tenant.id, req.body, db);
+        await processCustomerWebhook(tenant.id, webhookData, db);
+        break;
+      case 'customers/delete':
+        await processCustomerDeleteWebhook(tenant.id, webhookData, db);
         break;
       case 'products/create':
       case 'products/update':
-        // Process product webhook
-        await processProductWebhook(tenant.id, req.body, db);
+        await processProductWebhook(tenant.id, webhookData, db);
+        break;
+      case 'products/delete':
+        await processProductDeleteWebhook(tenant.id, webhookData, db);
         break;
       case 'checkouts/create':
-        // Custom event: checkout started
         await processCustomEvent(tenant.id, 'checkout_started', {
-          checkout_data: req.body,
+          checkout_data: webhookData,
+          occurred_at: new Date(),
+        }, db);
+        break;
+      case 'carts/create':
+        await processCustomEvent(tenant.id, 'cart_created', {
+          cart_data: webhookData,
           occurred_at: new Date(),
         }, db);
         break;
       default:
-        console.log(`Unhandled webhook topic: ${topic}`);
+        console.log(`⚠️  Unhandled webhook topic: ${topic}`);
     }
 
     res.status(200).json({ received: true });
+
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -92,18 +137,159 @@ export async function handleWebhook(req, res) {
 }
 
 async function processOrderWebhook(tenantId, orderData, db) {
-  // Similar to processOrder in ingestionService
-  // Implementation would go here
-  console.log(`Processing order webhook for tenant ${tenantId}`);
+  try {
+    // Extracting order from webhook payload (Shopify sends { order: {...} } format)
+    const order = orderData.order || orderData;
+    
+    // Using the existing processOrder function
+    await processOrder(tenantId, order, db);
+    console.log(`Order webhook processed: ${order.order_number || order.id} for tenant ${tenantId}`);
+
+  } catch (error) {
+    console.error('Error processing order webhook:', error);
+    throw error;
+  }
 }
 
 async function processCustomerWebhook(tenantId, customerData, db) {
-  // Similar to processCustomer in ingestionService
-  console.log(`Processing customer webhook for tenant ${tenantId}`);
+  try {
+    // Extracting the customer from webhook payload
+    const customer = customerData.customer || customerData;
+    
+    // Using the existing processCustomer function
+    await processCustomer(tenantId, customer, db);
+    console.log(`Customer webhook processed: ${customer.id} for tenant ${tenantId}`);
+
+  } catch (error) {
+    console.error('Error processing customer webhook:', error);
+    throw error;
+  }
 }
 
 async function processProductWebhook(tenantId, productData, db) {
-  // Similar to processProduct in ingestionService
-  console.log(`Processing product webhook for tenant ${tenantId}`);
+  try {
+    // Extracting product from webhook payload
+    const product = productData.product || productData;
+    
+    // Using the existing processProduct function
+    await processProduct(tenantId, product, db);
+    console.log(`Product webhook processed: ${product.id} for tenant ${tenantId}`);
+
+  } catch (error) {
+    console.error('Error processing product webhook:', error);
+    throw error;
+  }
+}
+
+async function processCustomerDeleteWebhook(tenantId, customerData, db) {
+  try {
+    // Extracting customer ID from webhook payload
+    // Shopify sends { id: customer_id } for delete events
+    const customerId = customerData.id || (customerData.customer && customerData.customer.id);
+    
+    if(!customerId) {
+      console.warn('Customer delete webhook: No customer ID found');
+      return;
+    }
+
+    // Deleting customer from database
+    const [result] = await db.execute(
+      'DELETE FROM customers WHERE tenant_id = ? AND shopify_customer_id = ?',
+      [tenantId, customerId]
+    );
+
+    if(result.affectedRows > 0) {
+      console.log(`Customer deleted: ${customerId} for tenant ${tenantId}`);
+    } else {
+      console.log(`Customer not found for deletion: ${customerId} for tenant ${tenantId}`);
+    }
+  } catch (error) {
+    console.error('Error processing customer delete webhook:', error);
+    throw error;
+  }
+}
+
+async function processProductDeleteWebhook(tenantId, productData, db) {
+  try {
+    // Extracting product ID from webhook payload
+    // Shopify sends { id: product_id } for delete events
+    const productId = productData.id || (productData.product && productData.product.id);
+    
+    if(!productId) {
+      console.warn('Product delete webhook: No product ID found');
+      return;
+    }
+
+    // Deleting product from database
+    const [result] = await db.execute(
+      'DELETE FROM products WHERE tenant_id = ? AND shopify_product_id = ?',
+      [tenantId, productId]
+    );
+
+    if(result.affectedRows > 0) {
+      console.log(`Product deleted: ${productId} for tenant ${tenantId}`);
+    } else {
+      console.log(`Product not found for deletion: ${productId} for tenant ${tenantId}`);
+    }
+  } catch (error) {
+    console.error('Error processing product delete webhook:', error);
+    throw error;
+  }
+}
+
+async function processCustomerDeleteWebhook(tenantId, customerData, db) {
+  try {
+    // Extracting customer ID from webhook payload
+    // Shopify sends { id: customer_id } for delete events
+    const customerId = customerData.id || (customerData.customer && customerData.customer.id);
+    
+    if(!customerId) {
+      console.warn('Customer delete webhook: No customer ID found');
+      return;
+    }
+
+    // Deleting customer from database
+    const [result] = await db.execute(
+      'DELETE FROM customers WHERE tenant_id = ? AND shopify_customer_id = ?',
+      [tenantId, customerId]
+    );
+
+    if(result.affectedRows > 0) {
+      console.log(`✅ Customer deleted: ${customerId} for tenant ${tenantId}`);
+    } else {
+      console.log(`⚠️  Customer not found for deletion: ${customerId} for tenant ${tenantId}`);
+    }
+  } catch (error) {
+    console.error('Error processing customer delete webhook:', error);
+    throw error;
+  }
+}
+
+async function processProductDeleteWebhook(tenantId, productData, db) {
+  try {
+    // Extracting product ID from webhook payload
+    // Shopify sends { id: product_id } for delete events
+    const productId = productData.id || (productData.product && productData.product.id);
+    
+    if(!productId) {
+      console.warn('Product delete webhook: No product ID found');
+      return;
+    }
+
+    // Deleting product from database
+    const [result] = await db.execute(
+      'DELETE FROM products WHERE tenant_id = ? AND shopify_product_id = ?',
+      [tenantId, productId]
+    );
+
+    if(result.affectedRows > 0) {
+      console.log(`Product deleted: ${productId} for tenant ${tenantId}`);
+    } else {
+      console.log(`Product not found for deletion: ${productId} for tenant ${tenantId}`);
+    }
+  } catch (error) {
+    console.error('Error processing product delete webhook:', error);
+    throw error;
+  }
 }
 

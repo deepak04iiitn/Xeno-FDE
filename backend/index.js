@@ -15,8 +15,13 @@ const PORT = process.env.PORT || 5000;
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Webhook endpoint needs raw body for HMAC verification
+app.use('/api/ingestion/webhook', express.raw({ type: 'application/json' }));
+
+// JSON parser for all other routes
+app.use(express.json());
 
 // Health check
 app.get('/health', (req, res) => {

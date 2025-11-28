@@ -58,7 +58,7 @@ async function syncCustomers(tenantId, shopify, db) {
   console.log(`Synced ${totalSynced} customers for tenant ${tenantId}`);
 }
 
-async function processCustomer(tenantId, customerData, db) {
+export async function processCustomer(tenantId, customerData, db) {
   try {
     // Extracting customer data - Shopify API may not return email/name due to Protected Customer Data
     // Trying multiple field name variations
@@ -149,7 +149,7 @@ async function syncProducts(tenantId, shopify, db) {
   console.log(`Synced ${totalSynced} products for tenant ${tenantId}`);
 }
 
-async function processProduct(tenantId, productData, db) {
+export async function processProduct(tenantId, productData, db) {
   try {
     const variants = productData.variants || [];
     const firstVariant = variants[0] || {};
@@ -220,7 +220,7 @@ async function syncOrders(tenantId, shopify, db) {
   console.log(`Synced ${totalSynced} orders for tenant ${tenantId}`);
 }
 
-async function processOrder(tenantId, orderData, db) {
+export async function processOrder(tenantId, orderData, db) {
   try {
     // Finding customer by email or shopify customer id
     let customerId = null;
