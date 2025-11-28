@@ -5,6 +5,11 @@ import {
   Line,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -31,6 +36,12 @@ export default function Dashboard() {
   const [ordersByDate, setOrdersByDate] = useState([]);
   const [topCustomers, setTopCustomers] = useState([]);
   const [revenueTrends, setRevenueTrends] = useState([]);
+  const [orderStatus, setOrderStatus] = useState([]);
+  const [revenueByDay, setRevenueByDay] = useState([]);
+  const [customerAcquisition, setCustomerAcquisition] = useState([]);
+  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
+  const [orderValueDistribution, setOrderValueDistribution] = useState([]);
+  const [growthMetrics, setGrowthMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [showOnboardModal, setShowOnboardModal] = useState(false);
@@ -97,7 +108,18 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const [statsRes, ordersRes, customersRes, trendsRes] = await Promise.all([
+      const [
+        statsRes, 
+        ordersRes, 
+        customersRes, 
+        trendsRes,
+        statusRes,
+        dayRes,
+        acquisitionRes,
+        monthlyRes,
+        distributionRes,
+        growthRes
+      ] = await Promise.all([
         fetch(`http://localhost:5000/api/insights/${selectedTenant}/dashboard`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -110,19 +132,60 @@ export default function Dashboard() {
         fetch(`http://localhost:5000/api/insights/${selectedTenant}/revenue-trends?period=30`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/order-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/revenue-by-day`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/customer-acquisition?period=30`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/monthly-revenue`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/order-value-distribution`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`http://localhost:5000/api/insights/${selectedTenant}/growth-metrics`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       ]);
 
-      const [statsData, ordersData, customersData, trendsData] = await Promise.all([
+      const [
+        statsData, 
+        ordersData, 
+        customersData, 
+        trendsData,
+        statusData,
+        dayData,
+        acquisitionData,
+        monthlyData,
+        distributionData,
+        growthData
+      ] = await Promise.all([
         statsRes.json(),
         ordersRes.json(),
         customersRes.json(),
         trendsRes.json(),
+        statusRes.json(),
+        dayRes.json(),
+        acquisitionRes.json(),
+        monthlyRes.json(),
+        distributionRes.json(),
+        growthRes.json(),
       ]);
 
       setStats(statsData);
       setOrdersByDate(ordersData.ordersByDate || []);
       setTopCustomers(customersData.topCustomers || []);
       setRevenueTrends(trendsData.trends || []);
+      setOrderStatus(statusData.statusDistribution || []);
+      setRevenueByDay(dayData.revenueByDay || []);
+      setCustomerAcquisition(acquisitionData.acquisition || []);
+      setMonthlyRevenue(monthlyData.monthlyRevenue || []);
+      setOrderValueDistribution(distributionData.distribution || []);
+      setGrowthMetrics(growthData);
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -355,6 +418,170 @@ export default function Dashboard() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+
+            {/* Growth Metrics */}
+            {growthMetrics && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-6 border border-indigo-200">
+                  <h3 className="text-sm font-medium text-indigo-700 mb-2">Week over Week</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-indigo-900">
+                      {growthMetrics.weekOverWeek.growth >= 0 ? '+' : ''}
+                      {growthMetrics.weekOverWeek.growth.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-indigo-600">revenue growth</span>
+                  </div>
+                  <p className="text-xs text-indigo-600 mt-2">
+                    ${growthMetrics.weekOverWeek.current.toFixed(2)} vs ${growthMetrics.weekOverWeek.previous.toFixed(2)} last week
+                  </p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
+                  <h3 className="text-sm font-medium text-emerald-700 mb-2">Month over Month</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-emerald-900">
+                      {growthMetrics.monthOverMonth.growth >= 0 ? '+' : ''}
+                      {growthMetrics.monthOverMonth.growth.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-emerald-600">revenue growth</span>
+                  </div>
+                  <p className="text-xs text-emerald-600 mt-2">
+                    ${growthMetrics.monthOverMonth.current.toFixed(2)} vs ${growthMetrics.monthOverMonth.previous.toFixed(2)} last month
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Additional Charts Row 1 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Order Status Distribution */}
+              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Order Status Distribution</h3>
+                {orderStatus.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={orderStatus}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                      >
+                        {orderStatus.map((entry, index) => {
+                          const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+                          return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                        })}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-500">
+                    No order status data available
+                  </div>
+                )}
+              </div>
+
+              {/* Revenue by Day of Week */}
+              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Revenue by Day of Week</h3>
+                {revenueByDay.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={revenueByDay}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="day" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="#6366f1" name="Revenue ($)" />
+                      <Bar dataKey="orderCount" fill="#10b981" name="Orders" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-500">
+                    No day-of-week data available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Charts Row 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {/* Customer Acquisition */}
+              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Customer Acquisition (30 Days)</h3>
+                {customerAcquisition.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={customerAcquisition}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Area 
+                        type="monotone" 
+                        dataKey="newCustomers" 
+                        stroke="#6366f1" 
+                        fill="#6366f1" 
+                        fillOpacity={0.6}
+                        name="New Customers" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-500">
+                    No customer acquisition data available
+                  </div>
+                )}
+              </div>
+
+              {/* Monthly Revenue */}
+              <div className="bg-white rounded-xl p-6 border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Monthly Revenue (Last 12 Months)</h3>
+                {monthlyRevenue.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyRevenue}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="#10b981" name="Revenue ($)" />
+                      <Bar dataKey="orderCount" fill="#6366f1" name="Orders" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-500">
+                    No monthly revenue data available
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Order Value Distribution */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200 mb-8">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Order Value Distribution</h3>
+              {orderValueDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={orderValueDistribution}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="range" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="orderCount" fill="#8b5cf6" name="Order Count" />
+                    <Bar dataKey="totalRevenue" fill="#f59e0b" name="Total Revenue ($)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[300px] text-slate-500">
+                  No order value distribution data available
+                </div>
+              )}
             </div>
 
             {/* Top Customers */}

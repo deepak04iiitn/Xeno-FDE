@@ -310,3 +310,324 @@ export async function getProductPerformance(req, res) {
   }
 }
 
+export async function getOrderStatusDistribution(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const [statusData] = await db.execute(
+      `SELECT 
+        financial_status,
+        COUNT(*) as count,
+        COALESCE(SUM(total_price), 0) as revenue
+      FROM orders
+      WHERE tenant_id = ?
+      GROUP BY financial_status
+      ORDER BY count DESC`,
+      [tenantId]
+    );
+
+    res.json({
+      statusDistribution: statusData.map((s) => ({
+        status: s.financial_status || 'unknown',
+        count: s.count,
+        revenue: parseFloat(s.revenue),
+      })),
+    });
+  } catch (error) {
+    console.error('Get order status distribution error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getRevenueByDayOfWeek(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const [dayData] = await db.execute(
+      `SELECT 
+        DAYNAME(order_date) as day_name,
+        DAYOFWEEK(order_date) as day_number,
+        COUNT(*) as order_count,
+        COALESCE(SUM(total_price), 0) as revenue
+      FROM orders
+      WHERE tenant_id = ?
+      GROUP BY DAYNAME(order_date), DAYOFWEEK(order_date)
+      ORDER BY day_number`,
+      [tenantId]
+    );
+
+    const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    res.json({
+      revenueByDay: dayData.map((d) => ({
+        day: d.day_name,
+        dayNumber: d.day_number,
+        orderCount: d.order_count,
+        revenue: parseFloat(d.revenue),
+      })).sort((a, b) => {
+        const aIndex = dayOrder.indexOf(a.day);
+        const bIndex = dayOrder.indexOf(b.day);
+        return aIndex - bIndex;
+      }),
+    });
+  } catch (error) {
+    console.error('Get revenue by day of week error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getCustomerAcquisition(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const { period = '30' } = req.query;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const safePeriod = parseInt(period) || 30;
+
+    const [acquisition] = await db.execute(
+      `SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as new_customers
+      FROM customers
+      WHERE tenant_id = ?
+        AND created_at >= DATE_SUB(NOW(), INTERVAL ${safePeriod} DAY)
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC`,
+      [tenantId]
+    );
+
+    res.json({
+      acquisition: acquisition.map((a) => ({
+        date: a.date,
+        newCustomers: a.new_customers,
+      })),
+    });
+  } catch (error) {
+    console.error('Get customer acquisition error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getMonthlyRevenue(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const [monthlyData] = await db.execute(
+      `SELECT 
+        DATE_FORMAT(order_date, '%Y-%m') as month,
+        COUNT(*) as order_count,
+        COALESCE(SUM(total_price), 0) as revenue,
+        COALESCE(AVG(total_price), 0) as avg_order_value
+      FROM orders
+      WHERE tenant_id = ?
+      GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+      ORDER BY month DESC
+      LIMIT 12`,
+      [tenantId]
+    );
+
+    res.json({
+      monthlyRevenue: monthlyData.map((m) => ({
+        month: m.month,
+        orderCount: m.order_count,
+        revenue: parseFloat(m.revenue),
+        avgOrderValue: parseFloat(m.avg_order_value),
+      })),
+    });
+  } catch (error) {
+    console.error('Get monthly revenue error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getOrderValueDistribution(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    const [distribution] = await db.execute(
+      `SELECT 
+        CASE
+          WHEN total_price < 25 THEN '0-25'
+          WHEN total_price < 50 THEN '25-50'
+          WHEN total_price < 100 THEN '50-100'
+          WHEN total_price < 200 THEN '100-200'
+          WHEN total_price < 500 THEN '200-500'
+          ELSE '500+'
+        END as range_label,
+        COUNT(*) as order_count,
+        COALESCE(SUM(total_price), 0) as total_revenue
+      FROM orders
+      WHERE tenant_id = ?
+      GROUP BY range_label
+      ORDER BY 
+        CASE range_label
+          WHEN '0-25' THEN 1
+          WHEN '25-50' THEN 2
+          WHEN '50-100' THEN 3
+          WHEN '100-200' THEN 4
+          WHEN '200-500' THEN 5
+          WHEN '500+' THEN 6
+        END`,
+      [tenantId]
+    );
+
+    res.json({
+      distribution: distribution.map((d) => ({
+        range: d.range_label,
+        orderCount: d.order_count,
+        totalRevenue: parseFloat(d.total_revenue),
+      })),
+    });
+  } catch (error) {
+    console.error('Get order value distribution error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export async function getGrowthMetrics(req, res) {
+  try {
+    const userId = req.user.userId;
+    const tenantId = req.params.tenantId;
+    const db = getPool();
+
+    const [tenants] = await db.execute('SELECT id FROM tenants WHERE id = ? AND user_id = ?', [
+      tenantId,
+      userId,
+    ]);
+
+    if(tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    // Get current week and last week revenue
+    const [currentWeek] = await db.execute(
+      `SELECT 
+        COALESCE(SUM(total_price), 0) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE tenant_id = ?
+        AND order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)`,
+      [tenantId]
+    );
+
+    const [lastWeek] = await db.execute(
+      `SELECT 
+        COALESCE(SUM(total_price), 0) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE tenant_id = ?
+        AND order_date >= DATE_SUB(NOW(), INTERVAL 14 DAY)
+        AND order_date < DATE_SUB(NOW(), INTERVAL 7 DAY)`,
+      [tenantId]
+    );
+
+    // Get current month and last month
+    const [currentMonth] = await db.execute(
+      `SELECT 
+        COALESCE(SUM(total_price), 0) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE tenant_id = ?
+        AND order_date >= DATE_FORMAT(NOW(), '%Y-%m-01')`,
+      [tenantId]
+    );
+
+    const [lastMonth] = await db.execute(
+      `SELECT 
+        COALESCE(SUM(total_price), 0) as revenue,
+        COUNT(*) as orders
+      FROM orders
+      WHERE tenant_id = ?
+        AND order_date >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 1 MONTH), '%Y-%m-01')
+        AND order_date < DATE_FORMAT(NOW(), '%Y-%m-01')`,
+      [tenantId]
+    );
+
+    const currentWeekRev = parseFloat(currentWeek[0].revenue);
+    const lastWeekRev = parseFloat(lastWeek[0].revenue);
+    const currentMonthRev = parseFloat(currentMonth[0].revenue);
+    const lastMonthRev = parseFloat(lastMonth[0].revenue);
+
+    const weekGrowth = lastWeekRev > 0 ? ((currentWeekRev - lastWeekRev) / lastWeekRev) * 100 : 0;
+    const monthGrowth = lastMonthRev > 0 ? ((currentMonthRev - lastMonthRev) / lastMonthRev) * 100 : 0;
+
+    res.json({
+      weekOverWeek: {
+        current: currentWeekRev,
+        previous: lastWeekRev,
+        growth: weekGrowth,
+        orders: {
+          current: currentWeek[0].orders,
+          previous: lastWeek[0].orders,
+        },
+      },
+      monthOverMonth: {
+        current: currentMonthRev,
+        previous: lastMonthRev,
+        growth: monthGrowth,
+        orders: {
+          current: currentMonth[0].orders,
+          previous: lastMonth[0].orders,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Get growth metrics error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+

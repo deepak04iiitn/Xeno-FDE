@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 import { initializeDatabase } from './utils/database.js';
 import authRoutes from './routes/auth.js';
 import tenantRoutes from './routes/tenants.js';
@@ -12,6 +13,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+const __dirname = path.resolve();
 
 // Middlewares
 app.use(cors());
@@ -33,6 +36,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/ingestion', ingestionRoutes);
 app.use('/api/insights', insightsRoutes);
+
+
+// Serve frontend files
+app.use(express.static(path.join(__dirname, '/frontend/dist')));
+
+// Catch-all route to serve the SPA for any unmatched routes
+app.use((req, res) => {
+    res.sendFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
+});
+
 
 // Initializing the database and starting the server
 async function startServer() {
