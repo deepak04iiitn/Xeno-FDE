@@ -55,24 +55,27 @@ export async function handleWebhook(req, res) {
         return res.status(401).json({ error: 'Missing webhook signature' });
       }
 
-      // Get the raw body - must be a Buffer for accurate HMAC calculation
-      let rawBody;
-      if(Buffer.isBuffer(req.body)) {
-        rawBody = req.body;
-      } else if(typeof req.body === 'string') {
-        rawBody = Buffer.from(req.body, 'utf8');
-      } else {
-        // If body was already parsed, we can't verify HMAC accurately
-        console.error('Webhook HMAC verification failed: Body was already parsed');
-        return res.status(401).json({ error: 'Cannot verify webhook signature - body was parsed' });
+      // Get the raw body buffer - this is captured before JSON parsing
+      const rawBody = req.rawBody;
+      
+      if(!rawBody || !Buffer.isBuffer(rawBody)) {
+        console.error('Webhook HMAC verification failed: Raw body not available');
+        return res.status(401).json({ error: 'Cannot verify webhook signature - raw body not available' });
       }
       
+      // Calculate HMAC using the raw body buffer
       const calculatedHmac = crypto
         .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
-        .update(rawBody, 'utf8')
+        .update(rawBody)
         .digest('base64');
 
-      if(calculatedHmac !== hmac) {
+      // Use timing-safe comparison to prevent timing attacks
+      const signatureOk = crypto.timingSafeEqual(
+        Buffer.from(calculatedHmac),
+        Buffer.from(hmac)
+      );
+
+      if(!signatureOk) {
         console.error('Webhook HMAC verification failed');
         console.error(`Expected: ${hmac}`);
         console.error(`Calculated: ${calculatedHmac}`);
@@ -95,13 +98,8 @@ export async function handleWebhook(req, res) {
 
     const tenant = tenants[0];
 
-    // Now parse the body after HMAC verification
-    let webhookData;
-    if(Buffer.isBuffer(req.body)) {
-      webhookData = JSON.parse(req.body.toString('utf8'));
-    } else {
-      webhookData = req.body;
-    }
+    // Body is already parsed by express.json() middleware
+    const webhookData = req.body;
 
     console.log(`📥 Webhook received: ${topic} from ${shopDomain}`);
 
