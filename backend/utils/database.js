@@ -5,16 +5,14 @@ dotenv.config();
 
 let pool;
 
-// Common connection configuration
+// Connection configuration (for mysql.createConnection)
 function getConnectionConfig(includeDatabase = true) {
   const config = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306', 10),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD,
-    connectTimeout: 60000, // 60 seconds
-    acquireTimeout: 60000, // 60 seconds
-    timeout: 60000, // 60 seconds
+    connectTimeout: 60000, // 60 seconds - valid for Connection
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
   };
@@ -34,14 +32,23 @@ function getConnectionConfig(includeDatabase = true) {
   return config;
 }
 
+// Pool configuration (for mysql.createPool)
+function getPoolConfig() {
+  const config = {
+    ...getConnectionConfig(true),
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    acquireTimeout: 60000, // 60 seconds - valid for Pool
+    timeout: 60000, // 60 seconds - valid for Pool
+  };
+
+  return config;
+}
+
 export function getPool() {
   if(!pool) {
-    pool = mysql.createPool({
-      ...getConnectionConfig(true),
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-    });
+    pool = mysql.createPool(getPoolConfig());
   }
   return pool;
 }
@@ -69,7 +76,11 @@ export async function initializeDatabase() {
 
   try {
     // Create database if it doesn't exist
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'xeno_fde'}`);
+    // Use backticks to handle database names with hyphens or special characters
+    const dbName = process.env.DB_NAME || 'xeno_fde';
+    // Escape backticks in the database name and wrap in backticks
+    const escapedDbName = '`' + dbName.replace(/`/g, '``') + '`';
+    await connection.execute(`CREATE DATABASE IF NOT EXISTS ${escapedDbName}`);
     await connection.end();
   } catch (error) {
     if (connection) {
