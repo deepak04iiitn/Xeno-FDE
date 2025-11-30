@@ -135,6 +135,9 @@ Edit `.env` with your configuration:
 - Database credentials
 - JWT secret (use a strong random string)
 - Redis URL (if different from default)
+- **SHOPIFY_CLIENT_SECRET** - Your Shopify app's API Secret Key (required for webhook HMAC verification)
+  - Format: `shpss_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+  - Found in: Shopify Partner Dashboard → Your App → API credentials → API secret key
 
 ### 6. Start the Application
 
@@ -271,7 +274,9 @@ The application will be available at:
 
 ### Webhooks (Optional)
 - Shopify webhooks can be configured for real-time updates
+- **HMAC verification enabled** - Webhooks are verified using your Shopify app's API Secret Key
 - Supported events: orders/create, orders/update, customers/create, customers/update, products/create, products/update, checkouts/create
+- Configure `SHOPIFY_CLIENT_SECRET` in `.env` for webhook verification
 
 ### Async Processing
 - Redis queue for background task processing
@@ -314,7 +319,7 @@ The application will be available at:
 
 2. **Rate Limiting**: No Shopify API rate limiting implemented. May need throttling for high-volume stores.
 
-3. **Webhook Security**: HMAC verification placeholder exists but needs proper secret configuration.
+3. **Webhook Security**: ✅ HMAC verification implemented using `SHOPIFY_CLIENT_SECRET`. Ensure your `.env` file contains the correct API Secret Key from your Shopify app.
 
 4. **Data Retention**: No automatic cleanup of old data.
 
@@ -331,7 +336,7 @@ The application will be available at:
 - [ ] Add request validation (Joi/Zod)
 - [ ] Enable HTTPS/TLS
 - [ ] Add API key rotation for tenants
-- [ ] Implement proper webhook HMAC verification
+- [x] Implement proper webhook HMAC verification
 - [ ] Add audit logging
 
 ### 2. Scalability
