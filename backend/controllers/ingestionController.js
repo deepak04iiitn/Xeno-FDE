@@ -51,7 +51,7 @@ export async function handleWebhook(req, res) {
     // Shopify requires the exact raw body as received for HMAC calculation
     // For Admin API webhooks: use SHOPIFY_CLIENT_SECRET (API Secret Key)
     // For Partner Dashboard webhooks: use SHOPIFY_WEBHOOK_SECRET
-    const appClientSecret = process.env.SHOPIFY_CLIENT_SECRET || process.env.SHOPIFY_WEBHOOK_SECRET;
+    const appClientSecret = process.env.SHOPIFY_WEBHOOK_SECRET;
     
     if(appClientSecret) {
       if(!hmac) {
@@ -82,23 +82,11 @@ export async function handleWebhook(req, res) {
 
       console.log(`🔑 Calculated HMAC: ${calculatedHmacDigest}`);
 
-      // Use timing-safe comparison to prevent timing attacks
-      // Compare base64 strings as UTF-8 buffers (both are already base64-encoded strings)
-      const calculatedBuffer = Buffer.from(calculatedHmacDigest, 'utf8');
-      const receivedBuffer = Buffer.from(hmac, 'utf8');
-      
-      // timingSafeEqual requires buffers of the same length
-      if(calculatedBuffer.length !== receivedBuffer.length) {
-        console.error('❌ Webhook HMAC verification failed: HMAC length mismatch');
-        console.error(`   Expected length: ${receivedBuffer.length}`);
-        console.error(`   Calculated length: ${calculatedBuffer.length}`);
-        console.error(`   Expected: ${hmac}`);
-        console.error(`   Calculated: ${calculatedHmacDigest}`);
-        console.error('💡 Tip: Verify that SHOPIFY_CLIENT_SECRET in .env matches your Shopify app\'s API Secret Key');
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
-      
-      const hmacValid = crypto.timingSafeEqual(calculatedBuffer, receivedBuffer);
+      // HMAC verification as per Shopify official documentation
+      const hmacValid = crypto.timingSafeEqual(
+        Buffer.from(calculatedHmacDigest, 'base64'),
+        Buffer.from(hmac, 'base64')
+      );
       
       if(!hmacValid) {
         console.error('❌ Webhook HMAC verification failed');
