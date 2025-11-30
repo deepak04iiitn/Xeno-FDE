@@ -21,16 +21,9 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
 // Webhook endpoint needs raw body for HMAC verification
-// Using express.json with verify callback to capture raw body before parsing
+// Using express.raw() as per Shopify documentation - this preserves the exact raw body buffer
 // This MUST be before the global express.json() middleware
-app.use('/api/ingestion/webhook', express.json({
-  limit: '10mb',
-  verify: (req, res, buf) => {
-    // Store the raw body buffer for HMAC verification
-    // This is the exact raw body as received from Shopify
-    req.rawBody = buf;
-  },
-}));
+app.use('/api/ingestion/webhook', express.raw({ type: '*/*' }));
 
 // Body parser for all other routes
 app.use(express.json());

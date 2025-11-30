@@ -49,41 +49,51 @@ export async function handleWebhook(req, res) {
 
     // HMAC verification MUST happen first, before any processing
     // Shopify requires the exact raw body as received for HMAC calculation
-    if(process.env.SHOPIFY_WEBHOOK_SECRET) {
+    // According to Shopify docs: use app's client secret (SHOPIFY_WEBHOOK_SECRET or SHOPIFY_CLIENT_SECRET)
+    const appClientSecret = process.env.SHOPIFY_WEBHOOK_SECRET || process.env.SHOPIFY_CLIENT_SECRET;
+    
+    if(appClientSecret) {
       if(!hmac) {
         console.error('Webhook HMAC verification failed: Missing HMAC header');
         return res.status(401).json({ error: 'Missing webhook signature' });
       }
 
-      // Get the raw body buffer - this is captured before JSON parsing
-      const rawBody = req.rawBody;
-      
-      if(!rawBody || !Buffer.isBuffer(rawBody)) {
+      // req.body is a Buffer when using express.raw({ type: '*/*' })
+      if(!req.body || !Buffer.isBuffer(req.body)) {
         console.error('Webhook HMAC verification failed: Raw body not available');
         return res.status(401).json({ error: 'Cannot verify webhook signature - raw body not available' });
       }
       
-      // Calculate HMAC using the raw body buffer
-      const calculatedHmac = crypto
-        .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
-        .update(rawBody)
+      // Calculate HMAC using the raw body buffer (as per Shopify documentation)
+      const calculatedHmacDigest = crypto
+        .createHmac('sha256', appClientSecret)
+        .update(req.body)
         .digest('base64');
 
       // Use timing-safe comparison to prevent timing attacks
-      const signatureOk = crypto.timingSafeEqual(
-        Buffer.from(calculatedHmac),
-        Buffer.from(hmac)
-      );
-
-      if(!signatureOk) {
+      // Compare base64 strings as UTF-8 buffers (both are already base64-encoded strings)
+      const calculatedBuffer = Buffer.from(calculatedHmacDigest, 'utf8');
+      const receivedBuffer = Buffer.from(hmac, 'utf8');
+      
+      // timingSafeEqual requires buffers of the same length
+      if(calculatedBuffer.length !== receivedBuffer.length) {
+        console.error('Webhook HMAC verification failed: HMAC length mismatch');
+        console.error(`Expected: ${hmac}`);
+        console.error(`Calculated: ${calculatedHmacDigest}`);
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+      
+      const hmacValid = crypto.timingSafeEqual(calculatedBuffer, receivedBuffer);
+      
+      if(!hmacValid) {
         console.error('Webhook HMAC verification failed');
         console.error(`Expected: ${hmac}`);
-        console.error(`Calculated: ${calculatedHmac}`);
+        console.error(`Calculated: ${calculatedHmacDigest}`);
         return res.status(401).json({ error: 'Invalid webhook signature' });
       }
     } else if(hmac) {
       // HMAC header present but no secret configured - warn but don't fail
-      console.warn('Webhook HMAC header present but SHOPIFY_WEBHOOK_SECRET not configured');
+      console.warn('Webhook HMAC header present but SHOPIFY_WEBHOOK_SECRET or SHOPIFY_CLIENT_SECRET not configured');
     }
 
     const db = getPool();
@@ -98,8 +108,14 @@ export async function handleWebhook(req, res) {
 
     const tenant = tenants[0];
 
-    // Body is already parsed by express.json() middleware
-    const webhookData = req.body;
+    // Parse the raw body buffer to JSON (req.body is a Buffer when using express.raw())
+    let webhookData;
+    try {
+      webhookData = JSON.parse(req.body.toString('utf8'));
+    } catch (error) {
+      console.error('Error parsing webhook body:', error);
+      return res.status(400).json({ error: 'Invalid JSON in webhook body' });
+    }
 
     console.log(`📥 Webhook received: ${topic} from ${shopDomain}`);
 
