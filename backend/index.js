@@ -18,12 +18,12 @@ const __dirname = path.resolve();
 
 // Middlewares
 app.use(cors());
-app.use(express.urlencoded({ extended: true }));
 
-// Webhook endpoint needs raw body for HMAC verification
+// Webhook endpoint needs raw body for HMAC verification - MUST be before other body parsers
 app.use('/api/ingestion/webhook', express.raw({ type: 'application/json' }));
 
-// JSON parser for all other routes
+// Body parsers for other routes
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Health check

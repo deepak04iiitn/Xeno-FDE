@@ -47,6 +47,42 @@ export async function handleWebhook(req, res) {
       return res.status(400).json({ error: 'Missing required headers' });
     }
 
+    // HMAC verification MUST happen first, before any processing
+    // Shopify requires the exact raw body as received for HMAC calculation
+    if(process.env.SHOPIFY_WEBHOOK_SECRET) {
+      if(!hmac) {
+        console.error('Webhook HMAC verification failed: Missing HMAC header');
+        return res.status(401).json({ error: 'Missing webhook signature' });
+      }
+
+      // Get the raw body - must be a Buffer for accurate HMAC calculation
+      let rawBody;
+      if(Buffer.isBuffer(req.body)) {
+        rawBody = req.body;
+      } else if(typeof req.body === 'string') {
+        rawBody = Buffer.from(req.body, 'utf8');
+      } else {
+        // If body was already parsed, we can't verify HMAC accurately
+        console.error('Webhook HMAC verification failed: Body was already parsed');
+        return res.status(401).json({ error: 'Cannot verify webhook signature - body was parsed' });
+      }
+      
+      const calculatedHmac = crypto
+        .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
+        .update(rawBody, 'utf8')
+        .digest('base64');
+
+      if(calculatedHmac !== hmac) {
+        console.error('Webhook HMAC verification failed');
+        console.error(`Expected: ${hmac}`);
+        console.error(`Calculated: ${calculatedHmac}`);
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    } else if(hmac) {
+      // HMAC header present but no secret configured - warn but don't fail
+      console.warn('Webhook HMAC header present but SHOPIFY_WEBHOOK_SECRET not configured');
+    }
+
     const db = getPool();
 
     // Finding tenant by shop domain
@@ -59,30 +95,12 @@ export async function handleWebhook(req, res) {
 
     const tenant = tenants[0];
 
-    // Parsing the body - handling both raw buffer and parsed JSON
+    // Now parse the body after HMAC verification
     let webhookData;
-
     if(Buffer.isBuffer(req.body)) {
-      webhookData = JSON.parse(req.body.toString());
+      webhookData = JSON.parse(req.body.toString('utf8'));
     } else {
       webhookData = req.body;
-    }
-
-    // Verifying webhook HMAC if webhook secret is configured or not
-    if(process.env.SHOPIFY_WEBHOOK_SECRET && hmac) {
-      const bodyString = Buffer.isBuffer(req.body) 
-        ? req.body.toString() 
-        : JSON.stringify(req.body);
-      
-      const calculatedHmac = crypto
-        .createHmac('sha256', process.env.SHOPIFY_WEBHOOK_SECRET)
-        .update(bodyString)
-        .digest('base64');
-
-      if(calculatedHmac !== hmac) {
-        console.error('Webhook HMAC verification failed');
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
     }
 
     console.log(`📥 Webhook received: ${topic} from ${shopDomain}`);
