@@ -134,3 +134,69 @@ cd frontend && npm run dev
 - Delete `node_modules` and `package-lock.json`
 - Run `npm install` again
 
+## Render Deployment Guide
+
+### Environment Variables for Render
+
+When deploying to Render, set these environment variables in your Render dashboard:
+
+**Required Variables:**
+```env
+PORT=10000
+DB_HOST=your-database-host.render.com
+DB_PORT=3306
+DB_USER=your-database-user
+DB_PASSWORD=your-database-password
+DB_NAME=xeno_fde
+JWT_SECRET=your-secret-key-here
+REDIS_URL=redis://your-redis-host:6379
+```
+
+**Optional Variables (for SSL):**
+```env
+DB_SSL=true
+DB_SSL_REJECT_UNAUTHORIZED=false
+```
+
+### Important Notes for Render:
+
+1. **Database Connection:**
+   - Use the **Internal Database URL** from Render's database dashboard
+   - If using Render's managed MySQL, the host will be something like `dpg-xxxxx-a.render.com`
+   - Port is usually `3306` for MySQL
+   - Enable SSL if your database requires it (`DB_SSL=true`)
+
+2. **Connection Timeouts:**
+   - The code now includes 60-second timeouts and retry logic
+   - If you still get timeout errors, verify:
+     - Database is accessible from Render's network
+     - Database hostname is correct (use internal hostname if available)
+     - Firewall rules allow connections from Render
+
+3. **Database Creation:**
+   - The app will automatically create the database if it doesn't exist
+   - Ensure your database user has `CREATE DATABASE` privileges
+
+4. **Build Command:**
+   ```bash
+   npm install && cd frontend && npm install && npm run build && cd ..
+   ```
+
+5. **Start Command:**
+   ```bash
+   npm start
+   ```
+
+### Troubleshooting Render Deployment:
+
+**ETIMEDOUT Error:**
+- Verify `DB_HOST` uses the internal database hostname (not external)
+- Check that `DB_PORT` is set correctly (usually 3306)
+- Ensure database is running and accessible
+- Try enabling SSL: `DB_SSL=true`
+
+**Connection Refused:**
+- Verify database credentials are correct
+- Check if database requires SSL connection
+- Ensure database is in the same region as your web service (for internal networking)
+

@@ -5,13 +5,39 @@ dotenv.config();
 
 let pool;
 
+// Common connection configuration
+function getConnectionConfig(includeDatabase = true) {
+  const config = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306', 10),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD,
+    connectTimeout: 60000, // 60 seconds
+    acquireTimeout: 60000, // 60 seconds
+    timeout: 60000, // 60 seconds
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+  };
+
+  // Add database if needed
+  if (includeDatabase) {
+    config.database = process.env.DB_NAME || 'xeno_fde';
+  }
+
+  // SSL configuration for cloud databases (like Render)
+  if (process.env.DB_SSL === 'true' || process.env.DB_SSL === '1') {
+    config.ssl = {
+      rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+    };
+  }
+
+  return config;
+}
+
 export function getPool() {
   if(!pool) {
     pool = mysql.createPool({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME || 'xeno_fde',
+      ...getConnectionConfig(true),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
@@ -21,15 +47,36 @@ export function getPool() {
 }
 
 export async function initializeDatabase() {
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD,
-  });
+  const maxRetries = 5;
+  const retryDelay = 5000; // 5 seconds
 
-  // Create database if it doesn't exist
-  await connection.execute(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'xeno_fde'}`);
-  await connection.end();
+  // Retry logic for database connection
+  let connection;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      connection = await mysql.createConnection(getConnectionConfig(false));
+      console.log(`✅ Database connection established (attempt ${attempt}/${maxRetries})`);
+      break;
+    } catch (error) {
+      console.error(`❌ Database connection attempt ${attempt}/${maxRetries} failed:`, error.message);
+      if (attempt === maxRetries) {
+        throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error.message}`);
+      }
+      console.log(`⏳ Retrying in ${retryDelay / 1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
+
+  try {
+    // Create database if it doesn't exist
+    await connection.execute(`CREATE DATABASE IF NOT EXISTS ${process.env.DB_NAME || 'xeno_fde'}`);
+    await connection.end();
+  } catch (error) {
+    if (connection) {
+      await connection.end();
+    }
+    throw error;
+  }
 
   const db = getPool();
 
