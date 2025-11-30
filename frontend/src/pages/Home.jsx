@@ -77,11 +77,11 @@ export default function Home() {
 
             {/* CTAs */}
             <div className="flex flex-wrap items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-full bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/40 transition hover:bg-indigo-400">
+              <button className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/40 transition-all duration-200 hover:from-indigo-700 hover:to-indigo-800 hover:shadow-indigo-500/50">
                 Launch sandbox
                 <ArrowRight className="h-4 w-4" />
               </button>
-              <button className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              <button className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
                 Watch 2-min demo
               </button>
             </div>
@@ -91,12 +91,12 @@ export default function Home() {
               {stats.map((stat) => (
                 <div
                   key={stat.label}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  className="rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-sm px-4 py-3 shadow-sm hover:shadow-md transition-all duration-200"
                 >
-                  <div className="text-xs uppercase tracking-wide text-slate-500">
+                  <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
                     {stat.label}
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-slate-900">
+                  <div className="mt-1 text-lg font-bold text-slate-900">
                     {stat.value}
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export default function Home() {
               <p className="text-xs uppercase tracking-wide text-emerald-600">
                 Free for development stores
               </p>
-              <button className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/40 transition hover:bg-emerald-400">
+              <button className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/40 transition-all duration-200 hover:from-emerald-700 hover:to-emerald-800 hover:shadow-emerald-500/50">
                 Connect Shopify
                 <ArrowRight className="h-4 w-4" />
               </button>
