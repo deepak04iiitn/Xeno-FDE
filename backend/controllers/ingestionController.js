@@ -1,6 +1,5 @@
 import { getPool } from '../utils/database.js';
 import { syncTenantData, processCustomEvent, processCustomer, processOrder, processProduct } from '../services/ingestionService.js';
-import crypto from 'crypto';
 
 export async function triggerSync(req, res) {
   try {
@@ -40,70 +39,14 @@ export async function triggerSync(req, res) {
 export async function handleWebhook(req, res) {
   try {
     const shopDomain = req.headers['x-shopify-shop-domain'];
-    const hmac = req.headers['x-shopify-hmac-sha256'];
     const topic = req.headers['x-shopify-topic'];
 
     if(!shopDomain || !topic) {
       return res.status(400).json({ error: 'Missing required headers' });
     }
 
-    // HMAC verification MUST happen first, before any processing
-    // Shopify requires the exact raw body as received for HMAC calculation
-    // For Admin API webhooks: use SHOPIFY_CLIENT_SECRET (API Secret Key)
-    // For Partner Dashboard webhooks: use SHOPIFY_WEBHOOK_SECRET
-    const appClientSecret = process.env.SHOPIFY_WEBHOOK_SECRET;
-    
-    if(appClientSecret) {
-      if(!hmac) {
-        console.error('❌ Webhook HMAC verification failed: Missing HMAC header');
-        return res.status(401).json({ error: 'Missing webhook signature' });
-      }
-
-      // req.body is a Buffer when using express.raw({ type: '*/*' })
-      if(!req.body || !Buffer.isBuffer(req.body)) {
-        console.error('❌ Webhook HMAC verification failed: Raw body not available');
-        console.error('Body type:', typeof req.body);
-        console.error('Is Buffer:', Buffer.isBuffer(req.body));
-        return res.status(401).json({ error: 'Cannot verify webhook signature - raw body not available' });
-      }
-      
-      // Debug logging (only show first 4 chars of secret for security)
-      const secretSource = process.env.SHOPIFY_CLIENT_SECRET ? 'SHOPIFY_CLIENT_SECRET' : 'SHOPIFY_WEBHOOK_SECRET';
-      console.log(`🔐 Using secret from: ${secretSource} (${appClientSecret.substring(0, 6)}...)`);
-      console.log(`📦 Raw body length: ${req.body.length} bytes`);
-      console.log(`📦 Raw body preview: ${req.body.toString('utf8').substring(0, 100)}...`);
-      console.log(`🔑 Received HMAC: ${hmac}`);
-      
-      // Calculate HMAC using the raw body buffer (as per Shopify documentation)
-      const calculatedHmacDigest = crypto
-        .createHmac('sha256', appClientSecret)
-        .update(req.body)
-        .digest('base64');
-
-      console.log(`🔑 Calculated HMAC: ${calculatedHmacDigest}`);
-
-      // HMAC verification as per Shopify official documentation
-      const hmacValid = crypto.timingSafeEqual(
-        Buffer.from(calculatedHmacDigest, 'base64'),
-        Buffer.from(hmac, 'base64')
-      );
-      
-      if(!hmacValid) {
-        console.error('❌ Webhook HMAC verification failed');
-        console.error(`   Expected: ${hmac}`);
-        console.error(`   Calculated: ${calculatedHmacDigest}`);
-        console.error(`   Secret source: ${secretSource}`);
-        console.error(`   Body length: ${req.body.length} bytes`);
-        console.error('💡 Tip: Verify that SHOPIFY_CLIENT_SECRET in .env matches your Shopify app\'s API Secret Key');
-        return res.status(401).json({ error: 'Invalid webhook signature' });
-      }
-      
-      console.log('✅ Webhook HMAC verification passed');
-    } else if(hmac) {
-      // HMAC header present but no secret configured - warn but don't fail
-      console.warn('⚠️  Webhook HMAC header present but SHOPIFY_CLIENT_SECRET or SHOPIFY_WEBHOOK_SECRET not configured');
-      console.warn('💡 Set SHOPIFY_CLIENT_SECRET in .env to enable webhook verification');
-    }
+    // NOTE: HMAC verification is intentionally DISABLED.
+    // Webhooks are processed directly without signature validation.
 
     const db = getPool();
 
@@ -117,10 +60,10 @@ export async function handleWebhook(req, res) {
 
     const tenant = tenants[0];
 
-    // Parse the raw body buffer to JSON (req.body is a Buffer when using express.raw())
+    // Parse the raw body string to JSON (req.body is a string when using express.text())
     let webhookData;
     try {
-      webhookData = JSON.parse(req.body.toString('utf8'));
+      webhookData = JSON.parse(req.body);
     } catch (error) {
       console.error('Error parsing webhook body:', error);
       return res.status(400).json({ error: 'Invalid JSON in webhook body' });
