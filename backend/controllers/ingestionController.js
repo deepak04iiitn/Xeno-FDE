@@ -1,5 +1,6 @@
 import { getPool } from '../utils/database.js';
 import { syncTenantData, processCustomEvent, processCustomer, processOrder, processProduct } from '../services/ingestionService.js';
+import { decrypt } from '../utils/crypto.js';
 
 export async function triggerSync(req, res) {
   try {
@@ -19,8 +20,11 @@ export async function triggerSync(req, res) {
 
     const tenant = tenants[0];
 
+    // Decrypt access_token before using it
+    const decryptedAccessToken = decrypt(tenant.access_token);
+
     // Triggerring async sync
-    syncTenantData(tenant.id, tenant.shop_domain, tenant.access_token)
+    syncTenantData(tenant.id, tenant.shop_domain, decryptedAccessToken)
       .then(async () => {
         await db.execute('UPDATE tenants SET last_sync_at = NOW() WHERE id = ?', [tenant.id]);
       })

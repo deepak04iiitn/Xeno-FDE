@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { getPool } from './database.js';
 import { syncTenantData } from '../services/ingestionService.js';
+import { decrypt } from './crypto.js';
 
 export function startScheduler() {
 
@@ -18,7 +19,9 @@ export function startScheduler() {
       for(const tenant of tenants) {
         try {
           console.log(`Syncing data for tenant ${tenant.id} (${tenant.shop_domain})`);
-          await syncTenantData(tenant.id, tenant.shop_domain, tenant.access_token);
+          // Decrypt access_token before using it
+          const decryptedAccessToken = decrypt(tenant.access_token);
+          await syncTenantData(tenant.id, tenant.shop_domain, decryptedAccessToken);
           
           // Updating last_sync_at
           await db.execute(

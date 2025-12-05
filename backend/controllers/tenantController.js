@@ -2,6 +2,7 @@ import { getPool } from '../utils/database.js';
 import { ShopifyService } from '../utils/shopify.js';
 import { syncTenantData } from '../services/ingestionService.js';
 import { registerWebhooks } from '../services/webhookService.js';
+import { encrypt, decrypt } from '../utils/crypto.js';
 
 export async function createTenant(req, res) {
   try {
@@ -33,11 +34,12 @@ export async function createTenant(req, res) {
       return res.status(409).json({ error: 'This shop is already connected' });
     }
 
-    // Creating tenant
+    // Creating tenant - encrypt access_token before storing
+    const encryptedAccessToken = encrypt(accessToken);
     const [result] = await db.execute(
       `INSERT INTO tenants (user_id, shop_domain, shop_name, access_token, is_active)
        VALUES (?, ?, ?, ?, TRUE)`,
-      [userId, shopDomain, shopName || shopInfo.name, accessToken]
+      [userId, shopDomain, shopName || shopInfo.name, encryptedAccessToken]
     );
 
     // Triggerring initial data sync
@@ -134,8 +136,11 @@ export async function syncTenant(req, res) {
 
     const tenant = tenants[0];
 
+    // Decrypt access_token before using it
+    const decryptedAccessToken = decrypt(tenant.access_token);
+
     // Triggerring sync (this will update existing records with ON DUPLICATE KEY UPDATE)
-    await syncTenantData(tenant.id, tenant.shop_domain, tenant.access_token);
+    await syncTenantData(tenant.id, tenant.shop_domain, decryptedAccessToken);
     await db.execute('UPDATE tenants SET last_sync_at = NOW() WHERE id = ?', [tenant.id]);
 
     res.json({ 

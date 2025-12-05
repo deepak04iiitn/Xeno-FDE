@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getPool } from '../utils/database.js';
+import { encrypt } from '../utils/crypto.js';
 
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL;
 
@@ -62,11 +63,12 @@ export async function registerWebhooks(tenantId, shopDomain, accessToken) {
       }
     }
 
-    // Storing webhook secret if provided
+    // Storing webhook secret if provided - encrypt before storing
     if(process.env.SHOPIFY_WEBHOOK_SECRET) {
+      const encryptedWebhookSecret = encrypt(process.env.SHOPIFY_WEBHOOK_SECRET);
       await db.execute(
         'UPDATE tenants SET webhook_secret = ? WHERE id = ?',
-        [process.env.SHOPIFY_WEBHOOK_SECRET, tenantId]
+        [encryptedWebhookSecret, tenantId]
       );
     }
 
