@@ -126,7 +126,7 @@ export async function handleWebhook(req, res) {
 
 async function processOrderWebhook(tenantId, orderData, db) {
   try {
-    // Extracting order from webhook payload (Shopify sends { order: {...} } format)
+    // Extracting order from webhook payload 
     const order = orderData.order || orderData;
     
     // Using the existing processOrder function
@@ -172,7 +172,6 @@ async function processProductWebhook(tenantId, productData, db) {
 async function processCustomerDeleteWebhook(tenantId, customerData, db) {
   try {
     // Extracting customer ID from webhook payload
-    // Shopify sends { id: customer_id } for delete events
     const customerId = customerData.id || (customerData.customer && customerData.customer.id);
     
     if(!customerId) {
@@ -200,7 +199,6 @@ async function processCustomerDeleteWebhook(tenantId, customerData, db) {
 async function processProductDeleteWebhook(tenantId, productData, db) {
   try {
     // Extracting product ID from webhook payload
-    // Shopify sends { id: product_id } for delete events
     const productId = productData.id || (productData.product && productData.product.id);
     
     if(!productId) {

@@ -8,13 +8,13 @@ export async function syncTenantData(tenantId, shopDomain, accessToken) {
   const db = getPool();
 
   try {
-    // Sync customers
+    // Syncing customers
     await syncCustomers(tenantId, shopify, db);
     
-    // Sync products
+    // Syncing products
     await syncProducts(tenantId, shopify, db);
     
-    // Sync orders
+    // Syncing orders
     await syncOrders(tenantId, shopify, db);
 
     return { success: true, message: 'Data synced successfully' };
@@ -43,10 +43,10 @@ async function syncCustomers(tenantId, shopify, db) {
     }
     
     for(const customer of customers) {
-      // Enqueue for async processing
+      // Enqueueing for async processing
       await enqueueIngestionTask(tenantId, 'customer', customer);
       
-      // Also process directly (for immediate sync)
+      // Also processing directly (for immediate sync)
       await processCustomer(tenantId, customer, db);
       totalSynced++;
     }
@@ -60,7 +60,7 @@ async function syncCustomers(tenantId, shopify, db) {
 
 export async function processCustomer(tenantId, customerData, db) {
   try {
-    // Extracting customer data - Shopify API may not return email/name due to Protected Customer Data
+    // Extracting customer data - Shopify API does not return email/name due to Protected Customer Data
     // Trying multiple field name variations
     let email = customerData.email || customerData.Email || null;
     let firstName = customerData.first_name || customerData.firstName || customerData['first_name'] || null;

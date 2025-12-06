@@ -20,9 +20,7 @@ const __dirname = path.resolve();
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
-// Webhook endpoint needs raw body for HMAC verification
-// Using express.text() as per Shopify documentation - this preserves the exact raw body as a string
-// This MUST be before the global express.json() middleware
+
 app.use('/api/ingestion/webhook', express.text({ type: '*/*' }));
 
 // Body parser for all other routes

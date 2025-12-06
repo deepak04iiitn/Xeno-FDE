@@ -19,7 +19,7 @@ export function startScheduler() {
       for(const tenant of tenants) {
         try {
           console.log(`Syncing data for tenant ${tenant.id} (${tenant.shop_domain})`);
-          // Decrypt access_token before using it
+          // Decrypting access_token before using it
           const decryptedAccessToken = decrypt(tenant.access_token);
           await syncTenantData(tenant.id, tenant.shop_domain, decryptedAccessToken);
           
@@ -33,12 +33,12 @@ export function startScheduler() {
           console.error(`Error syncing tenant ${tenant.id}:`, error.message);
         }
       }
-      console.log('✅ Scheduled sync completed');
+      console.log('Scheduled sync completed');
     } catch (error) {
-      console.error('❌ Error in scheduled sync:', error);
+      console.error('Error in scheduled sync:', error);
     }
   });
 
-  console.log('✅ Scheduler initialized - running hourly syncs');
+  console.log('Scheduler initialized - running hourly syncs');
 }
 

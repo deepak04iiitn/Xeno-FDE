@@ -136,7 +136,7 @@ export async function syncTenant(req, res) {
 
     const tenant = tenants[0];
 
-    // Decrypt access_token before using it
+    // Decrypting access_token before using it
     const decryptedAccessToken = decrypt(tenant.access_token);
 
     // Triggerring sync (this will update existing records with ON DUPLICATE KEY UPDATE)

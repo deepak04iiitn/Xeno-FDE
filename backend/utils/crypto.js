@@ -1,23 +1,24 @@
 import crypto from 'crypto';
+import dotenv from 'dotenv';
 
 // Encryption key from environment variable (should be 32 bytes = 64 hex characters for AES-256)
 const ALGORITHM = 'aes-256-gcm';
 
 let ENCRYPTION_KEY;
 if (process.env.ENCRYPTION_KEY) {
-  // Validate key length (must be 64 hex characters = 32 bytes)
+  // Validating key length (must be 64 hex characters = 32 bytes)
   if (process.env.ENCRYPTION_KEY.length !== 64 || !/^[0-9a-fA-F]+$/.test(process.env.ENCRYPTION_KEY)) {
-    console.error('❌ ERROR: ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
+    console.error('ERROR: ENCRYPTION_KEY must be a 64-character hex string (32 bytes)');
     console.error('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
     process.exit(1);
   }
   ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 } else {
-  // Generate a random key (not suitable for production)
+  // Generating a random key (not suitable for production)
   ENCRYPTION_KEY = crypto.randomBytes(32).toString('hex');
-  console.warn('⚠️  WARNING: ENCRYPTION_KEY not set. Using a random key that will change on restart.');
-  console.warn('⚠️  Set ENCRYPTION_KEY environment variable to a 32-byte hex string for production.');
-  console.warn('⚠️  Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  console.warn('WARNING: ENCRYPTION_KEY not set. Using a random key that will change on restart.');
+  console.warn('Set ENCRYPTION_KEY environment variable to a 32-byte hex string for production.');
+  console.warn('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
 }
 
 /**
@@ -31,17 +32,17 @@ export function encrypt(text) {
   }
 
   try {
-    // Generate a random initialization vector (IV)
+    // Generating a random initialization vector (IV)
     const iv = crypto.randomBytes(16);
     
-    // Create cipher
+    // Creating cipher
     const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
     
-    // Encrypt the text
+    // Encrypting the text
     let encrypted = cipher.update(text, 'utf8', 'base64');
     encrypted += cipher.final('base64');
     
-    // Get authentication tag
+    // Getting the authentication tag
     const authTag = cipher.getAuthTag();
     
     // Return format: iv:authTag:encryptedData (all base64 encoded)
@@ -63,26 +64,26 @@ export function decrypt(encryptedData) {
   }
 
   try {
-    // Split the encrypted data
+    // Splitting the encrypted data
     const parts = encryptedData.split(':');
     if (parts.length !== 3) {
-      // If it doesn't have the expected format, assume it's plaintext (for backward compatibility)
+      // If it doesn't have the expected format, assumming it's plaintext (for backward compatibility)
       // This allows existing unencrypted data to still work
-      console.warn('⚠️  Data does not appear to be encrypted, returning as-is (backward compatibility)');
+      console.warn('Data does not appear to be encrypted, returning as-is (backward compatibility)');
       return encryptedData;
     }
 
     const [ivBase64, authTagBase64, encrypted] = parts;
     
-    // Convert from base64
+    // Converting from base64
     const iv = Buffer.from(ivBase64, 'base64');
     const authTag = Buffer.from(authTagBase64, 'base64');
     
-    // Create decipher
+    // Creating decipher
     const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
     decipher.setAuthTag(authTag);
     
-    // Decrypt
+    // Decrypting
     let decrypted = decipher.update(encrypted, 'base64', 'utf8');
     decrypted += decipher.final('utf8');
     
@@ -91,7 +92,7 @@ export function decrypt(encryptedData) {
     console.error('Decryption error:', error);
     // If decryption fails, it might be plaintext (for backward compatibility)
     // Log the error but return the original value
-    console.warn('⚠️  Decryption failed, returning original value (may be plaintext)');
+    console.warn('Decryption failed, returning original value (may be plaintext)');
     return encryptedData;
   }
 }

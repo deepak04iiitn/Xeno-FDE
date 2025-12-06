@@ -186,7 +186,7 @@ export async function getTopCustomers(req, res) {
           customerIdentifier = c.email;
           customerName = c.email.split('@')[0]; // Username part for display
         } else {
-          // No protected data available - use Shopify Customer ID
+          // No protected data available - using Shopify Customer ID
           // This is what's available on basic/development stores
           customerIdentifier = `Customer #${c.shopify_customer_id}`;
           customerName = `Customer #${c.shopify_customer_id}`;
@@ -553,7 +553,7 @@ export async function getGrowthMetrics(req, res) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
 
-    // Get current week and last week revenue
+    // Getting current week and last week revenue
     const [currentWeek] = await db.execute(
       `SELECT 
         COALESCE(SUM(total_price), 0) as revenue,
@@ -575,7 +575,7 @@ export async function getGrowthMetrics(req, res) {
       [tenantId]
     );
 
-    // Get current month and last month
+    // Getting current month and last month
     const [currentMonth] = await db.execute(
       `SELECT 
         COALESCE(SUM(total_price), 0) as revenue,

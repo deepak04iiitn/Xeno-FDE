@@ -62,10 +62,10 @@ export async function initializeDatabase() {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       connection = await mysql.createConnection(getConnectionConfig(false));
-      console.log(`✅ Database connection established (attempt ${attempt}/${maxRetries})`);
+      console.log(`Database connection established (attempt ${attempt}/${maxRetries})`);
       break;
     } catch (error) {
-      console.error(`❌ Database connection attempt ${attempt}/${maxRetries} failed:`, error.message);
+      console.error(`Database connection attempt ${attempt}/${maxRetries} failed:`, error.message);
       if (attempt === maxRetries) {
         throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error.message}`);
       }
@@ -75,10 +75,9 @@ export async function initializeDatabase() {
   }
 
   try {
-    // Create database if it doesn't exist
-    // Use backticks to handle database names with hyphens or special characters
+    // Creating database if it doesn't exist
     const dbName = process.env.DB_NAME || 'xeno_fde';
-    // Escape backticks in the database name and wrap in backticks
+    
     const escapedDbName = '`' + dbName.replace(/`/g, '``') + '`';
     await connection.execute(`CREATE DATABASE IF NOT EXISTS ${escapedDbName}`);
     await connection.end();
@@ -215,6 +214,6 @@ export async function initializeDatabase() {
     )
   `);
 
-  console.log('✅ Database tables created/verified');
+  console.log('Database tables created/verified');
 }
 

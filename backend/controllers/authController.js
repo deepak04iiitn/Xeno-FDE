@@ -11,13 +11,13 @@ export async function signUp(req, res) {
 
     const db = getPool();
 
-    // Check if user already exists
+    // Checking if user already exists
     const [existingUsers] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (existingUsers.length > 0) {
       return res.status(409).json({ error: 'User with this email already exists' });
     }
 
-    // Hash password and create user
+    // Hashing password and creating user
     const passwordHash = await hashPassword(password);
     const [result] = await db.execute(
       'INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)',
@@ -51,7 +51,7 @@ export async function signIn(req, res) {
 
     const db = getPool();
 
-    // Find user
+    // Finding the user
     const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
     if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -59,7 +59,7 @@ export async function signIn(req, res) {
 
     const user = users[0];
 
-    // Verify password
+    // Verifying the password
     const isValid = await comparePassword(password, user.password_hash);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
