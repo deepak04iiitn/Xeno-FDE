@@ -37,6 +37,9 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/ingestion', ingestionRoutes);
 app.use('/api/insights', insightsRoutes);
 
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('pong');
+});
 
 // Serve frontend files
 app.use(express.static(path.join(__dirname, '/frontend/dist')));
