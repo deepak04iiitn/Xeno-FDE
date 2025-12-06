@@ -409,43 +409,78 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300">
                 <h3 className="text-lg font-bold text-slate-900 mb-6">Revenue Trends</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueTrends}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
-                    <YAxis yAxisId="left" stroke="#6366f1" style={{ fontSize: '12px' }} />
-                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px' }} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }} 
-                    />
-                    <Legend wrapperStyle={{ fontSize: '12px' }} />
-                    <Line 
-                      yAxisId="left"
-                      type="monotone" 
-                      dataKey="revenue" 
-                      stroke="#6366f1" 
-                      strokeWidth={3}
-                      dot={{ fill: '#6366f1', r: 4 }}
-                      activeDot={{ r: 6 }}
-                      name="Revenue ($)" 
-                    />
-                    <Line
-                      yAxisId="right"
-                      type="monotone"
-                      dataKey="avgOrderValue"
-                      stroke="#10b981"
-                      strokeWidth={3}
-                      dot={{ fill: '#10b981', r: 4 }}
-                      activeDot={{ r: 6 }}
-                      name="Avg Order Value ($)"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {revenueTrends.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={revenueTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#64748b" 
+                        style={{ fontSize: '12px' }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        }}
+                      />
+                      <YAxis 
+                        yAxisId="left" 
+                        stroke="#6366f1" 
+                        style={{ fontSize: '12px' }}
+                      />
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right" 
+                        stroke="#10b981" 
+                        style={{ fontSize: '12px' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                        labelFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        }}
+                        formatter={(value, name) => {
+                          if (name === 'Revenue ($)') {
+                            return `$${typeof value === 'number' ? value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : value}`;
+                          }
+                          return `$${typeof value === 'number' ? value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : value}`;
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '12px' }} />
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="#6366f1" 
+                        strokeWidth={3}
+                        dot={{ fill: '#6366f1', r: 5 }}
+                        activeDot={{ r: 7 }}
+                        name="Revenue ($)"
+                        isAnimationActive={true}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="avgOrderValue"
+                        stroke="#10b981"
+                        strokeWidth={3}
+                        dot={{ fill: '#10b981', r: 5 }}
+                        activeDot={{ r: 7 }}
+                        name="Avg Order Value ($)"
+                        isAnimationActive={true}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-slate-400">
+                    No revenue trends data available
+                  </div>
+                )}
               </div>
 
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-200/80 shadow-sm hover:shadow-lg transition-all duration-300">
@@ -453,7 +488,15 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={ordersByDate}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#64748b" 
+                      style={{ fontSize: '12px' }}
+                      tickFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                      }}
+                    />
                     <YAxis yAxisId="left" stroke="#6366f1" style={{ fontSize: '12px' }} />
                     <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px' }} />
                     <Tooltip 
@@ -462,7 +505,11 @@ export default function Dashboard() {
                         border: '1px solid #e2e8f0',
                         borderRadius: '12px',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                      }} 
+                      }}
+                      labelFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                      }}
                     />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Bar 
@@ -615,7 +662,15 @@ export default function Dashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#64748b" 
+                        style={{ fontSize: '12px' }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        }}
+                      />
                       <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
                       <Tooltip 
                         contentStyle={{ 
@@ -623,7 +678,11 @@ export default function Dashboard() {
                           border: '1px solid #e2e8f0',
                           borderRadius: '12px',
                           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                        }} 
+                        }}
+                        labelFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        }}
                       />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
                       <Area 
