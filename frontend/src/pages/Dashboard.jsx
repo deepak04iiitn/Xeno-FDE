@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [growthMetrics, setGrowthMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
   const [showOnboardModal, setShowOnboardModal] = useState(false);
   const [onboardData, setOnboardData] = useState({
     shopDomain: '',
@@ -226,6 +227,7 @@ export default function Dashboard() {
 
   const handleOnboard = async (e) => {
     e.preventDefault();
+    setOnboarding(true);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/tenants`, {
@@ -249,6 +251,8 @@ export default function Dashboard() {
 
     } catch (error) {
       alert(error.message);
+    } finally {
+      setOnboarding(false);
     }
   };
 
@@ -409,7 +413,8 @@ export default function Dashboard() {
                   <LineChart data={revenueTrends}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
-                    <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="left" stroke="#6366f1" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px' }} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -420,6 +425,7 @@ export default function Dashboard() {
                     />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Line 
+                      yAxisId="left"
                       type="monotone" 
                       dataKey="revenue" 
                       stroke="#6366f1" 
@@ -429,6 +435,7 @@ export default function Dashboard() {
                       name="Revenue ($)" 
                     />
                     <Line
+                      yAxisId="right"
                       type="monotone"
                       dataKey="avgOrderValue"
                       stroke="#10b981"
@@ -447,7 +454,8 @@ export default function Dashboard() {
                   <BarChart data={ordersByDate}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="date" stroke="#64748b" style={{ fontSize: '12px' }} />
-                    <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="left" stroke="#6366f1" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px' }} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -458,12 +466,14 @@ export default function Dashboard() {
                     />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Bar 
+                      yAxisId="left"
                       dataKey="orderCount" 
                       fill="#6366f1" 
                       radius={[8, 8, 0, 0]}
                       name="Orders" 
                     />
                     <Bar 
+                      yAxisId="right"
                       dataKey="revenue" 
                       fill="#10b981" 
                       radius={[8, 8, 0, 0]}
@@ -555,7 +565,8 @@ export default function Dashboard() {
                     <BarChart data={revenueByDay}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="day" stroke="#64748b" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                      <YAxis yAxisId="left" stroke="#6366f1" style={{ fontSize: '12px' }} />
+                      <YAxis yAxisId="right" orientation="right" stroke="#10b981" style={{ fontSize: '12px' }} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -566,12 +577,14 @@ export default function Dashboard() {
                       />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
                       <Bar 
+                        yAxisId="left"
                         dataKey="revenue" 
                         fill="#6366f1" 
                         radius={[8, 8, 0, 0]}
                         name="Revenue ($)" 
                       />
                       <Bar 
+                        yAxisId="right"
                         dataKey="orderCount" 
                         fill="#10b981" 
                         radius={[8, 8, 0, 0]}
@@ -638,7 +651,8 @@ export default function Dashboard() {
                     <BarChart data={monthlyRevenue}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="month" stroke="#64748b" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                      <YAxis yAxisId="left" stroke="#10b981" style={{ fontSize: '12px' }} />
+                      <YAxis yAxisId="right" orientation="right" stroke="#6366f1" style={{ fontSize: '12px' }} />
                       <Tooltip 
                         contentStyle={{ 
                           backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -649,12 +663,14 @@ export default function Dashboard() {
                       />
                       <Legend wrapperStyle={{ fontSize: '12px' }} />
                       <Bar 
+                        yAxisId="left"
                         dataKey="revenue" 
                         fill="#10b981" 
                         radius={[8, 8, 0, 0]}
                         name="Revenue ($)" 
                       />
                       <Bar 
+                        yAxisId="right"
                         dataKey="orderCount" 
                         fill="#6366f1" 
                         radius={[8, 8, 0, 0]}
@@ -678,7 +694,8 @@ export default function Dashboard() {
                   <BarChart data={orderValueDistribution}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="range" stroke="#64748b" style={{ fontSize: '12px' }} />
-                    <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="left" stroke="#8b5cf6" style={{ fontSize: '12px' }} />
+                    <YAxis yAxisId="right" orientation="right" stroke="#f59e0b" style={{ fontSize: '12px' }} />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.95)', 
@@ -689,12 +706,14 @@ export default function Dashboard() {
                     />
                     <Legend wrapperStyle={{ fontSize: '12px' }} />
                     <Bar 
+                      yAxisId="left"
                       dataKey="orderCount" 
                       fill="#8b5cf6" 
                       radius={[8, 8, 0, 0]}
                       name="Order Count" 
                     />
                     <Bar 
+                      yAxisId="right"
                       dataKey="totalRevenue" 
                       fill="#f59e0b" 
                       radius={[8, 8, 0, 0]}
@@ -803,7 +822,7 @@ export default function Dashboard() {
       {showOnboardModal && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
-          onClick={() => setShowOnboardModal(false)}
+          onClick={() => !onboarding && setShowOnboardModal(false)}
         >
           <div 
             className="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl border border-slate-200/80 animate-in zoom-in-95 duration-200"
@@ -828,7 +847,8 @@ export default function Dashboard() {
                     setOnboardData({ ...onboardData, shopDomain: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                  disabled={onboarding}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="your-shop.myshopify.com"
                 />
               </div>
@@ -843,7 +863,8 @@ export default function Dashboard() {
                     setOnboardData({ ...onboardData, accessToken: e.target.value })
                   }
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                  disabled={onboarding}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="shpat_..."
                 />
               </div>
@@ -857,7 +878,8 @@ export default function Dashboard() {
                   onChange={(e) =>
                     setOnboardData({ ...onboardData, shopName: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white"
+                  disabled={onboarding}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="My Store"
                 />
               </div>
@@ -865,15 +887,24 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setShowOnboardModal(false)}
-                  className="flex-1 px-4 py-3 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-all duration-200"
+                  disabled={onboarding}
+                  className="flex-1 px-4 py-3 border border-slate-300 rounded-xl text-slate-700 hover:bg-slate-50 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/30"
+                  disabled={onboarding}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-xl hover:from-indigo-700 hover:to-indigo-800 font-semibold transition-all duration-200 shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Connect
+                  {onboarding ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    'Connect'
+                  )}
                 </button>
               </div>
             </form>
