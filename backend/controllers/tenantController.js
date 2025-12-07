@@ -54,7 +54,7 @@ export async function createTenant(req, res) {
     // Registering webhooks for real-time updates
     try {
       const webhookResult = await registerWebhooks(result.insertId, shopDomain, accessToken);
-      console.log(`✅ Registered ${webhookResult.registered} webhooks for tenant ${result.insertId}`);
+      console.log(`Registered ${webhookResult.registered} webhooks for tenant ${result.insertId}`);
     } catch (webhookError) {
       console.error('Webhook registration error:', webhookError);
       // Not failing tenant creation if webhook registration fails
