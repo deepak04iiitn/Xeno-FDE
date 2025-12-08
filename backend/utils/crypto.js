@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
+dotenv.config();
+
 // Encryption key from environment variable (should be 32 bytes = 64 hex characters for AES-256)
 const ALGORITHM = 'aes-256-gcm';
 
