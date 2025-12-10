@@ -1,6 +1,9 @@
 import axios from 'axios';
 import { getPool } from '../utils/database.js';
 import { encrypt } from '../utils/crypto.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const WEBHOOK_BASE_URL = process.env.WEBHOOK_BASE_URL;
 
